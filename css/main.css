@@ -2001,7 +2001,7 @@ pre .javascript .function {
   width: 4px;
   height: 4px;
   border-radius: 50%;
-  background: #d2a173;
+  background: #ded12d;
 }
 .links-of-blogroll {
   font-size: 13px;
@@ -3405,7 +3405,7 @@ img:hover {
   border-bottom-color: #a166ab;
 }
 .page-archive .archive-page-counter {
-  color: #fff;
+  color: #000;
 }
 .page-archive .posts-collapse .archive-move-on {
   top: 10px;
