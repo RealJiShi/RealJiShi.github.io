@@ -152,7 +152,7 @@
 <meta property="og:locale" content="zh-Hans">
 <meta property="og:image" content="https://i.imgur.com/FsGq64w.png">
 <meta property="og:image" content="https://i.imgur.com/uF3WVGa.png">
-<meta property="og:updated_time" content="2018-04-06T02:35:28.117Z">
+<meta property="og:updated_time" content="2018-04-07T04:18:05.921Z">
 <meta name="twitter:card" content="summary">
 <meta name="twitter:title" content="QOpenGLWidget 揭秘">
 <meta name="twitter:description" content="QOpenGLWidget揭秘">
@@ -441,7 +441,7 @@
                   <span class="post-meta-item-text">字数统计&#58;</span>
                 
                 <span title="字数统计">
-                  2,684
+                  2,764
                 </span>
               
 
@@ -621,7 +621,7 @@ void Viewer::paintGL() {
     };
 
     QMatrix4x4 pmvMatrix;
-    pmvMatrix.ortho(-1.0f,1.0f,-1.0f,1.0f,0.0f, 10.0f);
+    pmvMatrix.ortho(-1.0f, 1.0f, -1.0f, 1.0f, 0.0f, 10.0f);
     int vertexLocation = m_program-&gt;attributeLocation(&quot;inPos&quot;);
     int matrixLocation = m_program-&gt;uniformLocation(&quot;matrix&quot;);
     m_program-&gt;enableAttributeArray(vertexLocation);
@@ -840,14 +840,12 @@ QImage QPlatformBackingStore::toImage() const
 <pre><code>QOpenGLFunctions *f = QOpenGLContext::currentContext()-&gt;functions();
 </code></pre><h4>Where is VAO &amp; VBO?</h4>
 
-<p>在<code>QOpenGL2PaintEngineEx::begin()</code>的代码中，可以发现：</p>
-<pre><code>bool QOpenGL2PaintEngineEx::begin(QPaintDevice *pdev) {
-    bool created = d-&gt;vao.create();
-    // If we managed to create it then we have a profile that supports VAOs
-    if (created) {
-        d-&gt;vao.bind();
-}
-</code></pre><p>对应的<code>bool QOpenGL2PaintEngineEx::end(QPaintDevice *pdev)</code>会进行解绑的操作。也就是说，<code>QOpenGLWidget</code>提供了一个默认的VAO，在绘制开始时绑定，结束后解绑。可以看下<code>initializeGL()</code>中的代码，会发现没有绑定任何的VBO；在<code>paintGL()</code>中，会发现，每次的渲染都是直接从内存中取顶点数据，这和我们平常的渲染流程有着很大的不同。为了和平时渲染代码保持一致，这里我们自己实现VAO，VBO来完成渲染，关键代码如下：</p>
+<p>在Simple Viewer的代码中，并没有和常见的<strong>Modern OpenGL</strong>一样必须有VAO,VBO等的配置。这时候突然想到<em>OpenGL</em>的渲染区域是由<a href="http://doc.qt.io/qt-5/qsurface.html" target="_blank" rel="noopener">QSurface</a>提供的，而<code>QSurface</code>是由<a href="http://doc.qt.io/qt-5/qsurfaceformat.html" target="_blank" rel="noopener">QSurfaceFormat</a>配置。那么我们先看看当前Viewer的版本是什么：</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line">Viewer::Viewer() &#123;</span><br><span class="line">    qDebug() &lt;&lt; this-&gt;format().version();</span><br><span class="line">&#125;</span><br><span class="line">// output:</span><br><span class="line">// QPair(2,0)</span><br></pre></td></tr></table></figure>
+<p>也就是说，当前<em>OpenGL</em>的版本是2.0的。早期版本的渲染VAO和VBO是可选的。那么我们手动设置format为<em>OpenGL-3.3, Core profile</em>：</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line">Viewer::Viewer() &#123;</span><br><span class="line">    // set version</span><br><span class="line">    QSurfaceFormat format;</span><br><span class="line">    format.setProfile( QSurfaceFormat::CoreProfile );</span><br><span class="line">    format.setVersion( 3, 3 );</span><br><span class="line">    this-&gt;setFormat( format );</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<p>现在可以再跑一次代码，就会发现<strong>nothing but background!</strong></p>
+<p>可以看下initializeGL()中的代码，会发现没有绑定任何的VBO；在paintGL()中，会发现，每次的渲染都是直接从内存中取顶点数据，这和我们平常的渲染流程有着很大的不同。为了和平时渲染代码保持一致，这里我们自己实现VAO，VBO来完成渲染，关键代码如下：</p>
 <pre><code>void Viewer::initializeGL() {
     QOpenGLFunctions *f = QOpenGLContext::currentContext()-&gt;functions();
     f-&gt;glClearColor( 0.1f, 0.1f, 0.1f, 1.0f );
